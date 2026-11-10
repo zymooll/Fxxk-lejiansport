@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>乐健 · 账号与轨迹</title><link rel="stylesheet" href="/style.css"><script src="/app.js" defer></script></head>
+<body><main>
+<header><div><div class="eyebrow">RUN LAB / LOCAL MVP</div><h1>选择账号，生成轨迹。</h1><p class="subtitle">账号独立管理，使用时检查凭据与最新里程。生成后可直接提交。</p></div><span class="badge">仅在本机运行</span></header>
+<div id="notice" class="notice" role="status" aria-live="polite">正在连接本地服务…</div>
+<section class="card"><div class="section-head"><div><span class="step">01</span><h2>账号池</h2></div><div class="row wrap"><button id="refreshAccounts" class="secondary">刷新列表</button><button id="importLocal" class="secondary hidden">导入已有本机账号</button><button id="showAdd" class="primary">添加账号</button></div></div>
+<p class="muted small">选择账号时读取实时里程；Token 需要续期时自动刷新。密码仅用于当次登录，账号凭据使用 Windows DPAPI 加密保存。</p>
+<div id="accounts" class="account-grid"></div><div id="undoBox" class="undo hidden"><span>账号已从池中移除。</span><button id="undoDelete" class="text-button">撤销删除</button></div>
+<form id="addForm" class="add-form hidden"><div class="section-head"><h2>添加或更新账号</h2><button id="closeAdd" type="button" class="text-button">收起</button></div>
+<div class="two"><label>备注<input id="label" maxlength="80" placeholder="例如：我的账号" autocomplete="off"></label><label>添加方式<select id="addMode"><option value="password">账号密码登录</option><option value="tokens">导入双 Token</option></select></label></div>
+<div id="passwordFields" class="two"><label>手机号 / 账号<input id="phone" autocomplete="username" maxlength="128"></label><label>密码<input id="password" type="password" autocomplete="off" maxlength="1024"></label></div>
+<label id="tokenFields" class="hidden">双 Token 或请求头 JSON<textarea id="tokenJson" spellcheck="false" autocomplete="off" placeholder='{"accessToken":"…","refreshToken":"…"}'></textarea></label>
+<button id="addAccount" type="submit" class="primary">验证并添加账号</button><span class="muted small">同一真实账号会更新现有条目，不会重复添加。</span></form>
+<div class="auto-panel"><div class="section-head"><h3>按账号目标批量处理</h3><div class="row wrap"><button id="previewAuto" class="secondary">预览上传计划</button><button id="autoUpload" class="primary">自动一键上传</button><button id="stopAuto" class="text-button" disabled>停止后续</button></div></div>
+<p class="small muted">修改目标后请先保存。逐个读取最新里程；未达目标且仍有日／周额度的账号各提交一条。圈数按本次可用额度 ÷ 实际参考圈长向上取整，其余采用生成设置。服务器判定单独显示。</p>
+<div id="autoProgress" class="small muted" role="status">尚未开始批量操作。</div><div id="autoResults" class="auto-results hidden"></div></div></section>
+<section id="currentPanel" class="card current hidden"><div class="section-head"><div><span class="step">LIVE</span><h2 id="currentName">当前账号</h2></div><div class="row"><button id="refreshCurrent" class="secondary">更新里程</button><button id="disconnect" class="text-button">取消选择</button></div></div>
+<div class="metrics"><div><span>累计里程</span><strong id="totalKm">—</strong></div><div><span>今日里程</span><strong id="dayKm">—</strong></div><div><span>本周里程</span><strong id="weekKm">—</strong></div><div><span>累计次数 / 段数</span><strong id="totalParts">—</strong></div></div><p id="rules" class="small muted"></p></section>
+<div class="workspace"><section class="card config"><div class="section-head"><div><span class="step">02</span><h2>生成设置</h2></div></div><fieldset id="settings" disabled>
+<label for="laps">圈数</label><div class="lap-picker"><button id="minus" type="button" class="secondary" aria-label="减少一圈">−</button><input id="laps" type="number" value="3" min="1" max="60" step="1"><button id="plus" type="button" class="secondary" aria-label="增加一圈">+</button></div>
+<div class="estimate"><span>当前圈数预计里程</span><output id="estimatedKm">— km</output></div>
+<div class="two"><label>偏移标准差 / m<input id="sigma" type="number" value="0.6" min="0" max="2" step="0.1"></label><label>最大偏移 / m<input id="cap" type="number" value="2" min="0" max="5" step="0.1"></label></div>
+<div class="two"><label>相关时间 / s<input id="correlation" type="number" value="4" min="0.5" max="30" step="0.5"></label><label>随机种子<input id="seed" type="number" value="-1" min="-1" max="2147483647" step="1" aria-describedby="seedHint"></label></div>
+<p id="seedHint" class="small muted">种子 -1：每次使用系统安全随机源生成；种子 0–2147483647：相同设置可复现轨迹。账号卡片上的“生成并上传”使用这里的全部设置，每次新生成后提交。</p>
+<p class="small muted">轨迹为模拟数据，预计里程与生成后的实际里程可能略有不同。</p>
+<button id="generate" type="button" class="primary full">生成完整轨迹</button></fieldset><p class="small muted">生成结果只保留在当前服务会话中，未提交的轨迹30分钟后失效。</p></section>
+<section class="card"><div class="section-head"><div><span class="step">03</span><h2>轨迹预览</h2></div><span id="planState" class="badge">等待生成</span></div>
+<div class="metrics"><div><span>生成后里程</span><strong id="trackKm">—</strong></div><div><span>轨迹点数</span><strong id="pointCount">—</strong></div><div><span>计划时长</span><strong id="plannedDuration">—</strong></div><div><span>区域内点数</span><strong id="insideRatio">—</strong></div></div>
+<label class="check"><input id="fullRegion" type="checkbox">显示完整可跑区域</label><div class="canvas-wrap"><canvas id="track" aria-label="参考跑道与生成的模拟轨迹"></canvas><div id="emptyMap" class="empty-map">选择账号后生成轨迹</div></div><p class="small muted">绿色：可跑区域　蓝色：参考跑道　橙色：本次轨迹 · 非实测定位</p></section></div>
+<section class="card submit"><div class="section-head"><div><span class="step">04</span><h2>提交与回执</h2></div><div class="row wrap"><button id="export" class="secondary" disabled>导出轨迹 JSON</button><button id="upload" class="primary" disabled>上传本次轨迹</button><button id="verify" class="secondary" disabled>回查远端状态</button></div></div>
+<p class="small muted">仅提交当前账号的本次轨迹。结束时间取提交时刻，开始时间按计划时长回推。收到回执后回查官方判定，服务器接收与成绩有效分别显示。</p><div id="result" class="result-empty" role="status">生成轨迹后即可上传。</div></section>
+<details class="card request-log"><summary>本次请求链</summary><ol id="trace"></ol></details>
+<footer>凭据只发送至 cpes.legym.cn。运动有效性以服务器记录为准。</footer>
+</main></body></html>

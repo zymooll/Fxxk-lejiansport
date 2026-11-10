@@ -1,0 +1,51 @@
+HTTP API · 目标里程与自动上传版
+
+固定本机监听：http://127.0.0.1:18766。原有Host、Origin、JSON体大小和CSP限制继续执行。
+成功封装 {code:0,message:"OK",data:...}；失败使用对应HTTP状态和非0业务code。
+
+GET  /api/health                 service=run-mvp-accounts-v3；accountPool=true、timer=false、localHistory=false、entropySource=os-csprng。
+GET  /api/accounts               账号池公开摘要，不返回Token、密码或加密文件内容。里程来自最近一次真实读取。
+                                targetMileageKm为当前目标，targetSource为semester/custom，remainingMileageKm为距目标剩余公里数。
+                                metrics包含semesterTargetMileageKm、dailyLimitKm、weeklyLimitKm及已有累计/日/周里程。
+POST /api/accounts               {label,mode:"password",phone,password} 或 {label,mode:"tokens",credentials:{accessToken,refreshToken}}。
+                                单次密码登录，不自动重试。双Token先DPAPI保存，再验证。verified=false时保留可重试条目。
+POST /api/accounts/import-local  {label}，从固定旧本机凭据文件迁入。去重依据真实用户和机构，不依据备注或Token。
+POST /api/accounts/{id}/use      {}，验证/续期并读取最新主页与里程，设置本机HttpOnly/SameSite会话。
+POST /api/accounts/{id}/delete   {}，可撤销移除账号；会话与暂存轨迹立即失效。
+POST /api/accounts/{id}/restore  {}，撤销移除；需重新选择使用。
+POST /api/accounts/{id}/target   {targetMileageKm:0..1000000}设置独立目标；{targetMileageKm:null}恢复跟随学期目标。
+                                返回更新后的账号公开摘要。布尔、字符串、NaN和无穷值均拒绝。
+GET  /api/session                当前选中账号、统计、规则、参考跑道与区域。需有效本机会话。
+POST /api/auth/logout            {}，仅退出本机会话。
+
+POST /api/trajectories/generate  {laps:1..60,sigmaMeters:0..2,maxOffsetMeters:0..5,correlationSeconds:0.5..30,seed:-1..2147483647}。
+                                seed默认-1，使用系统CSPRNG；非负整数可复现。仍拒绝clockScale字段。
+                                返回generationId、accountId、完整points、计划时长及entropySource（os-csprng/seeded-prng）。
+                                只在内存中保留30分钟，最多32批。不创建本地跑步记录。
+POST /api/trajectories/{id}/upload {}，只能由生成时同一账号提交。先检查当前规则/身份，发送已有坐标，不重新生成。
+                                结束时间=上传时刻，开始时间按计划时长回推。成功后持久化回执并只读回查远端判定。
+                                accepted再次调用只返回已有回执。unknown/sending禁止重发；明确拒绝允许人工重试。
+POST /api/trajectories/{id}/verify {}，只查询已接收记录的远端有效里程与原因，不上传。
+
+旧版计时、本地保存、历史列表与记录管理路由退役。旧SQLite文件保持不动。
+网页仅在GET遇到LOCAL_SESSION_REQUIRED时，用本标签页记住的账号ID重新建立会话；POST永不自动重放。
+账号卡片快捷按钮串行执行 use → generate（使用点击时设置）→ upload（仅新generationId），操作期间禁止连点。
+即使种子固定，每次快捷操作也生成新generationId；选择账号或生成失败不会提交既有轨迹。
+
+自动上传（账号池底部）
+POST /api/auto-upload/preview    {settings:{sigmaMeters,maxOffsetMeters,correlationSeconds,seed}}，字段可省略以使用默认值。
+                                逐账号验证/刷新Token、身份、目标、规则和最新里程，只返回计划，不生成、不上传。
+POST /api/auto-upload            同上，保存新批次与点击时设置。只建立pending队列，不在此请求提交轨迹。
+GET  /api/auto-upload/current    返回未结束批次，否则返回最近批次；从未建立则为null。
+GET  /api/auto-upload/{id}       返回批次state、settings、items及已保存回执。
+POST /api/auto-upload/{id}/next  {}，只处理一个pending账号：刷新→计划→生成→提交→回查；返回更新后整个批次。
+POST /api/auto-upload/{id}/cancel {}，取消尚未处理项。前端等待当前请求完成后再调用。
+
+批次状态：running/paused/completed/cancelled；账号项：pending/checking/sending/accepted/skipped/failed/unknown。
+settings不接受laps；自动圈数=ceil(可用额度km×1000÷参考圈长m)。目标只决定是否已达标，不截断本次额度。
+可用额度取日剩余、配置了的周剩余和单次上限的最小值；检查最低里程、圈数范围和覆盖回推时长的开放时段。
+今日结果不确定、回执待判定时跳过；已确认有效里程为统计延迟时的日额度下限。
+每批每个账号至多一次尝试；上传前再次核对额度，账号异常不阻断后续项。接收不代表成绩有效。
+客户端串行调用next，不重放任何POST。响应丢失后先GET状态，只能继续pending项。
+启动时把中断批次暂停，sending请求标记unknown，已保存回执保留；刷新网页不自动继续上传。
+未结束批次阻止其他手动上传。批次/回执持久化但不保存轨迹坐标。

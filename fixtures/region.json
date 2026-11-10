@@ -1,0 +1,27 @@
+{
+  "name": "Synthetic example region",
+  "source": "mathematically-generated-example",
+  "polygons": [
+    [
+      {
+        "latitude": 0.998,
+        "longitude": 0.998
+      },
+      {
+        "latitude": 0.998,
+        "longitude": 1.002
+      },
+      {
+        "latitude": 1.002,
+        "longitude": 1.002
+      },
+      {
+        "latitude": 1.002,
+        "longitude": 0.998
+      }
+    ]
+  ],
+  "excludedPolygons": [],
+  "coordinateSystem": "WGS84",
+  "threshold": 0.7
+}

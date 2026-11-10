@@ -1,0 +1,47 @@
+# Private runtime, account pool, credentials and user routes
+.local/
+**/.local/
+credentials*.json
+*.private.json
+*.dpapi
+*.sqlite*
+*.db
+*.db-*
+*.key
+*.pem
+*.p12
+.env
+.env.*
+!.env.example
+region-candidate.json
+
+# Captures, diagnostics, generated records and delivery archives
+outputs/
+backups/
+captures/
+apk-analysis/
+verification/
+*.har
+*.pcap
+*.pcapng
+*.jsonl
+*.log
+*.zip
+*.apk
+*.dex
+*.so
+v3-qa-*/
+v3-web-verification.json
+
+# Dependencies, caches and editor files
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+pydeps/
+node_modules/
+.pytest_cache/
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
